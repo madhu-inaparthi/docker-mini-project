@@ -1,30 +1,65 @@
 const express = require('express');
 const { Client } = require('pg');
+const cors = require('cors');
 const app = express();
 const port = 5000;
 
-const dbClient = new Client({
+app.use(cors());
+
+const config = {
   host: process.env.DB_HOST || 'db',  // note: use 'db' as host because of docker-compose service name
-  user: process.env.DB_USER || 'example',
-  password: process.env.DB_PASSWORD || 'example',
-  database: process.env.DB_NAME || 'example',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'testdb',
   port: process.env.DB_PORT || 5432,
+};
+
+// Function to try connecting to the database
+const connectWithRetry = async () => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+    console.log('Connected to Postgres');
+    return client;
+  } catch (err) {
+    console.error('Failed to connect to Postgres, retrying in 5 seconds...', err);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return connectWithRetry();
+  }
+};
+
+// Start trying to connect and store the client
+let dbClient = null;
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
 });
 
-dbClient.connect()
-  .then(() => console.log('Connected to Postgres'))
-  .catch((err) => console.error('Failed to connect to Postgres', err));
-
+// API endpoint that uses the database
 app.get('/api', async (req, res) => {
   try {
+    if (!dbClient) {
+      dbClient = await connectWithRetry();
+    }
     const result = await dbClient.query('SELECT NOW() AS time');
-    res.send(`Hello from Express + Postgres! Server time: ${result.rows[0].time}`);
+    res.json({
+      message: 'Hello from Express + Postgres!',
+      serverTime: result.rows[0].time
+    });
   } catch (err) {
     console.error('DB query error:', err);
-    res.status(500).send('Database error');
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-app.listen(port, () => {
+// Start the server and initialize database
+app.listen(port, '0.0.0.0', () => {
   console.log(`Backend listening at http://localhost:${port}`);
+  // Initialize database connection
+  connectWithRetry().then(client => {
+    dbClient = client;
+  }).catch(err => {
+    console.error('Initial database connection failed:', err);
+  });
 });
