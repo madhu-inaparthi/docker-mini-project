@@ -89,4 +89,3 @@ If the frontend cannot find index.html, verify the build process is copying all 
 
 License
 
-This project is for educational purposes.
