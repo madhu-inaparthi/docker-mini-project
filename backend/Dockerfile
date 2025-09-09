@@ -1,12 +1,20 @@
-FROM node:16
+# Use Node.js base image
+FROM node:14-alpine
 
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Copy dependency files
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
+# Copy app source code
 COPY . .
 
+# Expose port
 EXPOSE 5000
 
+# Start the server
 CMD ["npm", "start"]

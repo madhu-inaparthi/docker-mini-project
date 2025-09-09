@@ -1,12 +1,20 @@
-FROM node:16
+# Use Node.js base image
+FROM node:14-alpine
 
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Copy dependency files
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
+# Copy frontend source code
 COPY . .
 
+# Expose port
 EXPOSE 3000
 
+# Start the React app
 CMD ["npm", "start"]
